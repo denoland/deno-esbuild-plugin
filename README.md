@@ -1,8 +1,13 @@
 # Deno esbuild plugin
 
-This package adds support for Deno-style resolution and loading to [`esbuild`](https://esbuild.github.io/). It's based on [`@deno-/loader`](https://jsr.io/@deno/loader).
+This package adds support for Deno-style resolution and loading to
+[`esbuild`](https://esbuild.github.io/). It's based on
+[`@deno-/loader`](https://jsr.io/@deno/loader).
 
-The key difference to [`@luca/esbuild-deno-loader`](https://jsr.io/@luca/esbuild-deno-loader) is that leverages a WASM build of the same Rust crates that Deno itself uses for resolving and loading modules.
+The key difference to
+[`@luca/esbuild-deno-loader`](https://jsr.io/@luca/esbuild-deno-loader) is that
+leverages a WASM build of the same Rust crates that Deno itself uses for
+resolving and loading modules.
 
 It supports the following specifiers:
 
