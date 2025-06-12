@@ -1,0 +1,21 @@
+{
+  "name": "@deno/esbuild-plugin",
+  "version": "0.0.1",
+  "license": "MIT",
+  "exports": "./src/mod.ts",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact"
+  },
+  "imports": {
+    "@deno/loader": "jsr:@deno/loader@^0.1.1",
+    "@std/expect": "jsr:@std/expect@^1.0.16",
+    "@std/path": "jsr:@std/path@^1.1.0",
+    "esbuild": "npm:esbuild@^0.25.5",
+    "preact": "npm:preact@^10.26.8",
+    "mapped": "./tests/fixtures/simple.ts"
+  },
+  "lint": {
+    "rules": { "include": ["no-console"] }
+  }
+}

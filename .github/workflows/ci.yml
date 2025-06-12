@@ -1,0 +1,51 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macOS-latest, windows-latest, ubuntu-latest]
+        include:
+          - os: ubuntu-latest
+            cache_path: ~/.cache/deno/
+          - os: macos-latest
+            cache_path: ~/Library/Caches/deno/
+          - os: windows-latest
+            cache_path: ~\AppData\Local\deno\
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          cache: true
+          deno-version: 2.x
+
+      - name: Verify formatting
+        if: startsWith(matrix.os, 'ubuntu')
+        run: deno fmt --check
+
+      - name: Run linter
+        if: startsWith(matrix.os, 'ubuntu')
+        run: deno lint
+
+      - name: Type check
+        run: deno check
+
+      - name: Spell-check
+        if: startsWith(matrix.os, 'ubuntu')
+        uses: crate-ci/typos@master
+
+      - name: Run tests
+        run: deno test -A
