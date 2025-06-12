@@ -2,7 +2,7 @@
 
 This package adds support for Deno-style resolution and loading to
 [`esbuild`](https://esbuild.github.io/). It's based on
-[`@deno-/loader`](https://jsr.io/@deno/loader).
+[`@deno/loader`](https://jsr.io/@deno/loader).
 
 The key difference to
 [`@luca/esbuild-deno-loader`](https://jsr.io/@luca/esbuild-deno-loader) is that
