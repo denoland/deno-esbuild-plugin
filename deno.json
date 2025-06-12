@@ -1,6 +1,6 @@
 {
   "name": "@deno/esbuild-plugin",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "license": "MIT",
   "exports": "./src/mod.ts",
   "compilerOptions": {
