@@ -11,10 +11,19 @@ import * as path from "@std/path";
 import { isBuiltin } from "node:module";
 
 export interface DenoPluginOptions {
+  /** Show debugging logs */
   debug?: boolean;
+  /** Use this path to a `deno.json` instead of auto-discovering it. */
   configPath?: string;
+  /** Don't transpile files when loading them */
+  noTranspile?: boolean;
+  /** Keep JSX as is, instead of transpiling it according to compilerOptions. */
+  preserveJsx?: boolean;
 }
 
+/**
+ * Create an instance of the Deno plugin for esbuild
+ */
 export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
   return {
     name: "deno",
@@ -46,6 +55,8 @@ export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
 
       const loader = await workspace.createLoader({
         entrypoints,
+        noTranspile: options.noTranspile,
+        preserveJsx: options.preserveJsx,
       });
 
       const onResolve = async (

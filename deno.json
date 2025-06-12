@@ -17,5 +17,8 @@
   },
   "lint": {
     "rules": { "include": ["no-console"] }
+  },
+  "publish": {
+    "exclude": [".github/", "tests/"]
   }
 }
