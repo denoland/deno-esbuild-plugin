@@ -1,2 +1,2 @@
 // deno-lint-ignore no-console
-console.log(<div />);
+console.log(<div>it works</div>);

@@ -5,6 +5,9 @@ import * as path from "@std/path";
 
 async function testEsbuild(
   options: {
+    jsx?: BuildOptions["jsx"];
+    jsxDev?: BuildOptions["jsxDev"];
+    jsxImportSource?: BuildOptions["jsxImportSource"];
     entryPoints: BuildOptions["entryPoints"];
     plugins?: BuildOptions["plugins"];
   },
@@ -14,8 +17,9 @@ async function testEsbuild(
     write: false,
     format: "esm",
     bundle: true,
-    jsx: "automatic",
-    jsxImportSource: "preact",
+    jsx: options.jsx ?? "automatic",
+    jsxDev: options.jsxDev ?? undefined,
+    jsxImportSource: options.jsxImportSource ?? "preact",
     plugins: [...options.plugins ?? [], denoPlugin()],
   });
 
@@ -195,7 +199,6 @@ Deno.test({
 });
 
 Deno.test({
-  ignore: true, // Not supported at the moment
   name: "entrypoint - mapped:",
   fn: async () => {
     await testEsbuild({
@@ -212,24 +215,43 @@ Deno.test({
   name: "plugins can participate in resolution",
   fn: async () => {
     const res = await testEsbuild({
-      entryPoints: [getFixture("preact.ts")],
+      entryPoints: [getFixture("mapped.ts")],
       plugins: [{
         name: "test",
         setup(ctx) {
-          ctx.onResolve({ filter: /.*/ }, (args) => {
-            if (args.path.includes("preact.ts")) {
-              return {
-                path: getFixture("simple.ts"),
-              };
-            }
+          ctx.onResolve({ filter: /mapped$/ }, () => {
+            return {
+              path: getFixture("simple.ts"),
+              namespace: "test-internal",
+            };
+          });
 
-            return null;
+          ctx.onLoad({ filter: /.*/, namespace: "test-internal" }, () => {
+            return {
+              contents: "hey",
+            };
           });
         },
       }],
     });
 
     expect(res.outputFiles[0].text).toContain("hey");
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "jsx import source",
+  fn: async () => {
+    const res = await testEsbuild({
+      jsx: "automatic",
+      jsxDev: true,
+      jsxImportSource: "preact",
+      entryPoints: [getFixture("jsx.tsx")],
+    });
+
+    expect(res.outputFiles[0].text).toContain("it works");
   },
   sanitizeResources: false,
   sanitizeOps: false,
