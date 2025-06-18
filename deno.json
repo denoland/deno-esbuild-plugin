@@ -8,7 +8,7 @@
     "jsxImportSource": "preact"
   },
   "imports": {
-    "@deno/loader": "jsr:@deno/loader@^0.1.1",
+    "@deno/loader": "jsr:@deno/loader@^0.1.2",
     "@std/expect": "jsr:@std/expect@^1.0.16",
     "@std/path": "jsr:@std/path@^1.1.0",
     "esbuild": "npm:esbuild@^0.25.5",
