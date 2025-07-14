@@ -1,4 +1,9 @@
-import { MediaType, ResolutionMode, Workspace } from "@deno/loader";
+import {
+  MediaType,
+  RequestedModuleType,
+  ResolutionMode,
+  Workspace,
+} from "@deno/loader";
 import type {
   Loader,
   OnLoadArgs,
@@ -32,6 +37,8 @@ export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
         debug: options.debug,
         configPath: options.configPath,
         nodeConditions: ctx.initialOptions.conditions,
+        noTranspile: options.noTranspile,
+        preserveJsx: options.preserveJsx,
       });
 
       // Normalize entrypoints for deno graph
@@ -55,8 +62,6 @@ export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
 
       const loader = await workspace.createLoader({
         entrypoints,
-        noTranspile: options.noTranspile,
-        preserveJsx: options.preserveJsx,
       });
 
       const onResolve = async (
@@ -115,7 +120,8 @@ export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
             ? args.path
             : path.toFileUrl(args.path).toString();
 
-        const res = await loader.load(url);
+        const moduleType = getModuleType(args.with);
+        const res = await loader.load(url, moduleType);
 
         if (res.kind === "external") {
           return null;
@@ -167,5 +173,18 @@ function mediaToLoader(type: MediaType): Loader {
       return "default";
     default:
       return "default";
+  }
+}
+
+function getModuleType(withArgs: Record<string, string>): RequestedModuleType {
+  switch (withArgs.type) {
+    case "text":
+      return RequestedModuleType.Text;
+    case "bytes":
+      return RequestedModuleType.Bytes;
+    case "json":
+      return RequestedModuleType.Json;
+    default:
+      return RequestedModuleType.Default;
   }
 }

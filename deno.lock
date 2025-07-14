@@ -1,13 +1,15 @@
 {
   "version": "5",
   "specifiers": {
-    "jsr:@deno/loader@~0.1.2": "0.1.2",
+    "jsr:@deno/loader@0.2": "0.2.0",
+    "jsr:@marvinh-test/fresh-island@*": "0.0.1",
     "jsr:@std/assert@1": "1.0.13",
     "jsr:@std/assert@^1.0.13": "1.0.13",
     "jsr:@std/expect@^1.0.16": "1.0.16",
-    "jsr:@std/internal@^1.0.6": "1.0.8",
-    "jsr:@std/internal@^1.0.7": "1.0.8",
-    "jsr:@std/path@^1.1.0": "1.1.0",
+    "jsr:@std/internal@^1.0.6": "1.0.9",
+    "jsr:@std/internal@^1.0.7": "1.0.9",
+    "jsr:@std/internal@^1.0.9": "1.0.9",
+    "jsr:@std/path@^1.1.1": "1.1.1",
     "npm:@preact/signals@^1.2.3": "1.3.2_preact@10.26.8",
     "npm:@types/node@*": "22.15.15",
     "npm:esbuild@~0.25.5": "0.25.5",
@@ -16,8 +18,16 @@
     "npm:preact@^10.26.8": "10.26.8"
   },
   "jsr": {
-    "@deno/loader@0.1.2": {
-      "integrity": "36882e2ef7cc57a0f8924877593b98e3c58fbd2359884ff4e0bf2f50ff6ceff3"
+    "@deno/loader@0.2.0": {
+      "integrity": "37b3a0edc7b8ac183be0cbdea9ab73f2acff41381843cd16fbe96305fe013edd"
+    },
+    "@marvinh-test/fresh-island@0.0.1": {
+      "integrity": "890f2595e60b1aaeaa8d73c6ad2c1247d4c5b895387df230f7f3b2a4da29b585",
+      "dependencies": [
+        "npm:@preact/signals",
+        "npm:preact@^10.22.0",
+        "npm:preact@^10.26.8"
+      ]
     },
     "@std/assert@1.0.13": {
       "integrity": "ae0d31e41919b12c656c742b22522c32fb26ed0cba32975cb0de2a273cb68b29",
@@ -35,8 +45,14 @@
     "@std/internal@1.0.8": {
       "integrity": "fc66e846d8d38a47cffd274d80d2ca3f0de71040f855783724bb6b87f60891f5"
     },
-    "@std/path@1.1.0": {
-      "integrity": "ddc94f8e3c275627281cbc23341df6b8bcc874d70374f75fec2533521e3d6886"
+    "@std/internal@1.0.9": {
+      "integrity": "bdfb97f83e4db7a13e8faab26fb1958d1b80cc64366501af78a0aee151696eb8"
+    },
+    "@std/path@1.1.1": {
+      "integrity": "fe00026bd3a7e6a27f73709b83c607798be40e20c81dde655ce34052fd82ec76",
+      "dependencies": [
+        "jsr:@std/internal@^1.0.9"
+      ]
     }
   },
   "npm": {
@@ -229,9 +245,9 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@deno/loader@~0.1.2",
+      "jsr:@deno/loader@0.2",
       "jsr:@std/expect@^1.0.16",
-      "jsr:@std/path@^1.1.0",
+      "jsr:@std/path@^1.1.1",
       "npm:esbuild@~0.25.5",
       "npm:preact@^10.26.8"
     ]
