@@ -64,6 +64,10 @@ export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
         entrypoints,
       });
 
+      ctx.onDispose(() => {
+        loader[Symbol.dispose]?.();
+      });
+
       const onResolve = async (
         args: OnResolveArgs,
       ): Promise<OnResolveResult | null> => {
