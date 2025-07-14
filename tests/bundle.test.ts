@@ -256,3 +256,42 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false,
 });
+
+Deno.test({
+  name: "with json",
+  fn: async () => {
+    const res = await testEsbuild({
+      entryPoints: [getFixture("with-json.ts")],
+    });
+
+    expect(res.outputFiles[0].text).toContain("it works");
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "with text",
+  fn: async () => {
+    const res = await testEsbuild({
+      entryPoints: [getFixture("with-text.ts")],
+    });
+
+    expect(res.outputFiles[0].text).toContain("it works");
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "with bytes",
+  fn: async () => {
+    const res = await testEsbuild({
+      entryPoints: [getFixture("with-bytes.ts")],
+    });
+
+    expect(res.outputFiles[0].text).toContain("it works");
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
