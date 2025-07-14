@@ -41,27 +41,10 @@ export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
         preserveJsx: options.preserveJsx,
       });
 
-      // Normalize entrypoints for deno graph
-      const entrypoints: string[] = [];
-      const rawEntries = ctx.initialOptions.entryPoints;
-      if (rawEntries !== undefined) {
-        if (Array.isArray(rawEntries)) {
-          for (const entry of rawEntries) {
-            if (typeof entry === "string") {
-              entrypoints.push(entry);
-            } else {
-              entrypoints.push(entry.in);
-            }
-          }
-        } else {
-          for (const [_name, file] of Object.entries(rawEntries)) {
-            entrypoints.push(file);
-          }
-        }
-      }
-
       const loader = await workspace.createLoader({
-        entrypoints,
+        // Entrypoints passed to esbuild may contain virtual modules,
+        // so we can't pass them here otherwise we'd throw.
+        entrypoints: [],
       });
 
       const onResolve = async (
@@ -78,27 +61,21 @@ export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
             ? ResolutionMode.Require
             : ResolutionMode.Import;
 
-        const res = await loader.resolve(args.path, args.importer, kind);
+        try {
+          const res = await loader.resolve(args.path, args.importer, kind);
 
-        let namespace: string | undefined;
-        if (res.startsWith("file:")) {
-          namespace = "file";
-        } else if (res.startsWith("http:")) {
-          namespace = "http";
-        } else if (res.startsWith("https:")) {
-          namespace = "https";
-        } else if (res.startsWith("npm:")) {
-          namespace = "npm";
-        } else if (res.startsWith("jsr:")) {
-          namespace = "jsr";
+          const namespace = getNamespace(res);
+          const resolved = res.startsWith("file:")
+            ? path.fromFileUrl(res)
+            : res;
+
+          return {
+            path: resolved,
+            namespace,
+          };
+        } catch {
+          return null;
         }
-
-        const resolved = res.startsWith("file:") ? path.fromFileUrl(res) : res;
-
-        return {
-          path: resolved,
-          namespace,
-        };
       };
 
       // Esbuild doesn't detect namespaces in entrypoints. We need
@@ -186,5 +163,26 @@ function getModuleType(withArgs: Record<string, string>): RequestedModuleType {
       return RequestedModuleType.Json;
     default:
       return RequestedModuleType.Default;
+  }
+}
+
+function getNamespace(specifier: string): string | undefined {
+  const idx = specifier.indexOf(":");
+  if (idx === -1) return;
+
+  const protocol = specifier.slice(0, idx);
+  switch (protocol) {
+    case "file":
+      return "file";
+    case "http":
+      return "http";
+    case "https":
+      return "https";
+    case "npm":
+      return "npm";
+    case "jsr":
+      return "jsr";
+    default:
+      return;
   }
 }

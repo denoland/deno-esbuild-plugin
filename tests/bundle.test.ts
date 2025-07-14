@@ -10,6 +10,7 @@ async function testEsbuild(
     jsxImportSource?: BuildOptions["jsxImportSource"];
     entryPoints: BuildOptions["entryPoints"];
     plugins?: BuildOptions["plugins"];
+    pluginsAfter?: BuildOptions["plugins"];
   },
 ) {
   const res = await build({
@@ -20,7 +21,11 @@ async function testEsbuild(
     jsx: options.jsx ?? "automatic",
     jsxDev: options.jsxDev ?? undefined,
     jsxImportSource: options.jsxImportSource ?? "preact",
-    plugins: [...options.plugins ?? [], denoPlugin()],
+    plugins: [
+      ...options.plugins ?? [],
+      denoPlugin(),
+      ...options.pluginsAfter ?? [],
+    ],
   });
 
   expect(res.errors).toEqual([]);
@@ -288,6 +293,36 @@ Deno.test({
   fn: async () => {
     const res = await testEsbuild({
       entryPoints: [getFixture("with-bytes.ts")],
+    });
+
+    expect(res.outputFiles[0].text).toContain("it works");
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "virtual entrypoint",
+  fn: async () => {
+    const res = await testEsbuild({
+      entryPoints: ["virtual-foo"],
+      pluginsAfter: [{
+        name: "test",
+        setup(ctx) {
+          ctx.onResolve({ filter: /virtual-foo$/ }, () => {
+            return {
+              path: getFixture("simple.ts"),
+              namespace: "test-internal",
+            };
+          });
+
+          ctx.onLoad({ filter: /.*/, namespace: "test-internal" }, () => {
+            return {
+              contents: "export const value = 'it works'",
+            };
+          });
+        },
+      }],
     });
 
     expect(res.outputFiles[0].text).toContain("it works");
