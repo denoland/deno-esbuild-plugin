@@ -152,66 +152,6 @@ Deno.test({
 });
 
 Deno.test({
-  name: "entrypoint - jsr:",
-  fn: async () => {
-    await testEsbuild({
-      entryPoints: ["jsr:@marvinh-test/fresh-island"],
-    });
-  },
-  sanitizeResources: false,
-  sanitizeOps: false,
-});
-
-Deno.test({
-  name: "entrypoint - npm:",
-  fn: async () => {
-    await testEsbuild({
-      entryPoints: ["npm:preact"],
-    });
-  },
-  sanitizeResources: false,
-  sanitizeOps: false,
-});
-
-Deno.test({
-  name: "entrypoint - https:",
-  fn: async () => {
-    await testEsbuild({
-      entryPoints: ["https://esm.sh/preact"],
-    });
-  },
-  sanitizeResources: false,
-  sanitizeOps: false,
-});
-
-Deno.test({
-  name: "entrypoint - file:",
-  fn: async () => {
-    await testEsbuild({
-      entryPoints: [
-        path.toFileUrl(path.join(import.meta.dirname!, "fixtures", "simple.ts"))
-          .href,
-      ],
-    });
-  },
-  sanitizeResources: false,
-  sanitizeOps: false,
-});
-
-Deno.test({
-  name: "entrypoint - mapped:",
-  fn: async () => {
-    await testEsbuild({
-      entryPoints: [
-        "mapped",
-      ],
-    });
-  },
-  sanitizeResources: false,
-  sanitizeOps: false,
-});
-
-Deno.test({
   name: "plugins can participate in resolution",
   fn: async () => {
     const res = await testEsbuild({

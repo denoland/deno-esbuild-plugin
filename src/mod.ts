@@ -41,28 +41,7 @@ export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
         preserveJsx: options.preserveJsx,
       });
 
-      // Normalize entrypoints for deno graph
-      const entrypoints: string[] = [];
-      const rawEntries = ctx.initialOptions.entryPoints;
-      if (rawEntries !== undefined) {
-        if (Array.isArray(rawEntries)) {
-          for (const entry of rawEntries) {
-            if (typeof entry === "string") {
-              entrypoints.push(entry);
-            } else {
-              entrypoints.push(entry.in);
-            }
-          }
-        } else {
-          for (const [_name, file] of Object.entries(rawEntries)) {
-            entrypoints.push(file);
-          }
-        }
-      }
-
-      const loader = await workspace.createLoader({
-        entrypoints,
-      });
+      const loader = await workspace.createLoader();
 
       ctx.onDispose(() => {
         loader[Symbol.dispose]?.();
