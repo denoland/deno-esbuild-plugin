@@ -67,27 +67,40 @@ export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
             ? ResolutionMode.Require
             : ResolutionMode.Import;
 
-        const res = await loader.resolve(args.path, args.importer, kind);
+        try {
+          const res = await loader.resolve(args.path, args.importer, kind);
 
-        let namespace: string | undefined;
-        if (res.startsWith("file:")) {
-          namespace = "file";
-        } else if (res.startsWith("http:")) {
-          namespace = "http";
-        } else if (res.startsWith("https:")) {
-          namespace = "https";
-        } else if (res.startsWith("npm:")) {
-          namespace = "npm";
-        } else if (res.startsWith("jsr:")) {
-          namespace = "jsr";
+          let namespace: string | undefined;
+          if (res.startsWith("file:")) {
+            namespace = "file";
+          } else if (res.startsWith("http:")) {
+            namespace = "http";
+          } else if (res.startsWith("https:")) {
+            namespace = "https";
+          } else if (res.startsWith("npm:")) {
+            namespace = "npm";
+          } else if (res.startsWith("jsr:")) {
+            namespace = "jsr";
+          }
+
+          const resolved = res.startsWith("file:")
+            ? path.fromFileUrl(res)
+            : res;
+
+          return {
+            path: resolved,
+            namespace,
+          };
+        } catch (err) {
+          const couldNotResolveReg =
+            /Relative import path ".*?" not prefixed with/;
+
+          if (err instanceof Error && couldNotResolveReg.test(err.message)) {
+            return null;
+          }
+
+          throw err;
         }
-
-        const resolved = res.startsWith("file:") ? path.fromFileUrl(res) : res;
-
-        return {
-          path: resolved,
-          namespace,
-        };
       };
 
       // Esbuild doesn't detect namespaces in entrypoints. We need
