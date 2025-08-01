@@ -11,6 +11,7 @@ async function testEsbuild(
     entryPoints: BuildOptions["entryPoints"];
     plugins?: BuildOptions["plugins"];
     external?: BuildOptions["external"];
+    platform?: BuildOptions["platform"];
   },
 ) {
   const res = await build({
@@ -23,6 +24,7 @@ async function testEsbuild(
     jsxImportSource: options.jsxImportSource ?? "preact",
     plugins: [denoPlugin(), ...options.plugins ?? []],
     external: options.external,
+    platform: options.platform,
   });
 
   expect(res.errors).toEqual([]);
@@ -270,6 +272,20 @@ Deno.test({
     });
 
     expect(res.outputFiles[0].text).toContain("hey");
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "respects 'platform: browser'",
+  fn: async () => {
+    const res = await testEsbuild({
+      entryPoints: [getFixture("platform.ts")],
+      platform: "browser",
+    });
+
+    expect(res.outputFiles[0].text).not.toContain("worker_threads");
   },
   sanitizeResources: false,
   sanitizeOps: false,
