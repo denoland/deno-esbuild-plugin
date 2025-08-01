@@ -3,6 +3,7 @@ import {
   RequestedModuleType,
   ResolutionMode,
   Workspace,
+  type WorkspaceOptions,
 } from "@deno/loader";
 import type {
   Loader,
@@ -10,6 +11,7 @@ import type {
   OnLoadResult,
   OnResolveArgs,
   OnResolveResult,
+  Platform,
   Plugin,
 } from "esbuild";
 import * as path from "@std/path";
@@ -39,6 +41,7 @@ export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
         nodeConditions: ctx.initialOptions.conditions,
         noTranspile: options.noTranspile,
         preserveJsx: options.preserveJsx,
+        platform: getPlatform(ctx.initialOptions.platform),
       });
 
       const loader = await workspace.createLoader();
@@ -175,6 +178,20 @@ function mediaToLoader(type: MediaType): Loader {
       return "default";
     default:
       return "default";
+  }
+}
+
+function getPlatform(
+  platform: Platform | undefined,
+): WorkspaceOptions["platform"] {
+  switch (platform) {
+    case "browser":
+      return "browser";
+    case "node":
+      return "node";
+    case "neutral":
+    default:
+      return undefined;
   }
 }
 
