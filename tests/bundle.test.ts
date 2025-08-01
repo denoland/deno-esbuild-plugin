@@ -21,7 +21,7 @@ async function testEsbuild(
     jsx: options.jsx ?? "automatic",
     jsxDev: options.jsxDev ?? undefined,
     jsxImportSource: options.jsxImportSource ?? "preact",
-    plugins: [...options.plugins ?? [], denoPlugin()],
+    plugins: [denoPlugin(), ...options.plugins ?? []],
     external: options.external,
   });
 
@@ -247,6 +247,29 @@ Deno.test({
     });
 
     expect(res.outputFiles[0].text).toContain(`import "mapped"`);
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "ignore modules it cannot resolve",
+  fn: async () => {
+    const res = await testEsbuild({
+      entryPoints: [":::"],
+      plugins: [{
+        name: ":::",
+        setup(build) {
+          build.onResolve({ filter: /:::/ }, () => {
+            return {
+              path: getFixture("simple.ts"),
+            };
+          });
+        },
+      }],
+    });
+
+    expect(res.outputFiles[0].text).toContain("hey");
   },
   sanitizeResources: false,
   sanitizeOps: false,
