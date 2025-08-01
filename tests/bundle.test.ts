@@ -10,6 +10,7 @@ async function testEsbuild(
     jsxImportSource?: BuildOptions["jsxImportSource"];
     entryPoints: BuildOptions["entryPoints"];
     plugins?: BuildOptions["plugins"];
+    external?: BuildOptions["external"];
   },
 ) {
   const res = await build({
@@ -21,6 +22,7 @@ async function testEsbuild(
     jsxDev: options.jsxDev ?? undefined,
     jsxImportSource: options.jsxImportSource ?? "preact",
     plugins: [...options.plugins ?? [], denoPlugin()],
+    external: options.external,
   });
 
   expect(res.errors).toEqual([]);
@@ -231,6 +233,20 @@ Deno.test({
     });
 
     expect(res.outputFiles[0].text).toContain("it works");
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "keep external specifiers",
+  fn: async () => {
+    const res = await testEsbuild({
+      entryPoints: [getFixture("external.ts")],
+      external: ["mapped"],
+    });
+
+    expect(res.outputFiles[0].text).toContain(`import "mapped"`);
   },
   sanitizeResources: false,
   sanitizeOps: false,
