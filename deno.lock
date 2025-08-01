@@ -1,7 +1,7 @@
 {
   "version": "5",
   "specifiers": {
-    "jsr:@deno/loader@0.3": "0.3.0",
+    "jsr:@deno/loader@~0.3.1": "0.3.1",
     "jsr:@marvinh-test/fresh-island@*": "0.0.1",
     "jsr:@std/assert@1": "1.0.13",
     "jsr:@std/assert@^1.0.13": "1.0.13",
@@ -18,8 +18,8 @@
     "npm:preact@^10.26.8": "10.26.8"
   },
   "jsr": {
-    "@deno/loader@0.3.0": {
-      "integrity": "f6a293012922c3c560ae0fb24db2065566f8307f48fceac2d4ddfcce5fd3a9d7"
+    "@deno/loader@0.3.1": {
+      "integrity": "ad4f2e6c28b364269c9b81709ef014760cb29643ec0abc73cfbca25f3f9ca3b8"
     },
     "@marvinh-test/fresh-island@0.0.1": {
       "integrity": "890f2595e60b1aaeaa8d73c6ad2c1247d4c5b895387df230f7f3b2a4da29b585",
@@ -245,7 +245,7 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@deno/loader@0.3",
+      "jsr:@deno/loader@~0.3.1",
       "jsr:@std/expect@^1.0.16",
       "jsr:@std/path@^1.1.1",
       "npm:esbuild@~0.25.5",
