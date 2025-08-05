@@ -125,7 +125,7 @@ export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
             ? args.path
             : path.toFileUrl(args.path).toString();
 
-        const moduleType = getModuleType(args.with);
+        const moduleType = getModuleType(args.path, args.with);
         const res = await loader.load(url, moduleType);
 
         if (res.kind === "external") {
@@ -195,7 +195,10 @@ function getPlatform(
   }
 }
 
-function getModuleType(withArgs: Record<string, string>): RequestedModuleType {
+function getModuleType(
+  file: string,
+  withArgs: Record<string, string>,
+): RequestedModuleType {
   switch (withArgs.type) {
     case "text":
       return RequestedModuleType.Text;
@@ -204,6 +207,9 @@ function getModuleType(withArgs: Record<string, string>): RequestedModuleType {
     case "json":
       return RequestedModuleType.Json;
     default:
+      if (file.endsWith(".json")) {
+        return RequestedModuleType.Json;
+      }
       return RequestedModuleType.Default;
   }
 }
