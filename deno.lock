@@ -1,7 +1,7 @@
 {
   "version": "5",
   "specifiers": {
-    "jsr:@deno/loader@~0.3.2": "0.3.2",
+    "jsr:@deno/loader@~0.3.3": "0.3.3",
     "jsr:@marvinh-test/fresh-island@*": "0.0.1",
     "jsr:@std/assert@1": "1.0.13",
     "jsr:@std/assert@^1.0.13": "1.0.13",
@@ -14,13 +14,14 @@
     "npm:@types/node@*": "22.15.15",
     "npm:esbuild@~0.25.5": "0.25.5",
     "npm:fflate@~0.8.2": "0.8.2",
+    "npm:mime-db@^1.54.0": "1.54.0",
     "npm:preact@*": "10.26.8",
     "npm:preact@^10.22.0": "10.26.8",
     "npm:preact@^10.26.8": "10.26.8"
   },
   "jsr": {
-    "@deno/loader@0.3.2": {
-      "integrity": "2734cfcd7d91cb2be49279c0d68ae1d1922138525c0f9d409260c085efb1983d"
+    "@deno/loader@0.3.3": {
+      "integrity": "983a2b3694e0acecadd6825531ec9dd8b2f92ea0ef0db45c221dda4c81aa5925"
     },
     "@marvinh-test/fresh-island@0.0.1": {
       "integrity": "890f2595e60b1aaeaa8d73c6ad2c1247d4c5b895387df230f7f3b2a4da29b585",
@@ -236,6 +237,9 @@
     "fflate@0.8.2": {
       "integrity": "sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A=="
     },
+    "mime-db@1.54.0": {
+      "integrity": "sha512-aU5EJuIN2WDemCcAp2vFBfp/m4EAhWJnUNSSw0ixs7/kXbd6Pg64EmwJkNdFhB8aWt1sH2CTXrLxo/iAGV3oPQ=="
+    },
     "preact@10.26.8": {
       "integrity": "sha512-1nMfdFjucm5hKvq0IClqZwK4FJkGXhRrQstOQ3P4vp8HxKrJEMFcY6RdBRVTdfQS/UlnX6gfbPuTvaqx/bDoeQ=="
     },
@@ -252,11 +256,12 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@deno/loader@~0.3.2",
+      "jsr:@deno/loader@~0.3.3",
       "jsr:@std/expect@^1.0.16",
       "jsr:@std/path@^1.1.1",
       "npm:esbuild@~0.25.5",
       "npm:fflate@~0.8.2",
+      "npm:mime-db@^1.54.0",
       "npm:preact@^10.26.8"
     ]
   }

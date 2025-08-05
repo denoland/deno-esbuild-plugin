@@ -3,17 +3,15 @@ import { build, type BuildOptions } from "esbuild";
 import { denoPlugin } from "@deno/esbuild-plugin";
 import * as path from "@std/path";
 
-async function testEsbuild(
-  options: {
-    jsx?: BuildOptions["jsx"];
-    jsxDev?: BuildOptions["jsxDev"];
-    jsxImportSource?: BuildOptions["jsxImportSource"];
-    entryPoints: BuildOptions["entryPoints"];
-    plugins?: BuildOptions["plugins"];
-    external?: BuildOptions["external"];
-    platform?: BuildOptions["platform"];
-  },
-) {
+async function testEsbuild(options: {
+  jsx?: BuildOptions["jsx"];
+  jsxDev?: BuildOptions["jsxDev"];
+  jsxImportSource?: BuildOptions["jsxImportSource"];
+  entryPoints: BuildOptions["entryPoints"];
+  plugins?: BuildOptions["plugins"];
+  external?: BuildOptions["external"];
+  platform?: BuildOptions["platform"];
+}) {
   const res = await build({
     entryPoints: options.entryPoints,
     write: false,
@@ -22,7 +20,7 @@ async function testEsbuild(
     jsx: options.jsx ?? "automatic",
     jsxDev: options.jsxDev ?? undefined,
     jsxImportSource: options.jsxImportSource ?? "preact",
-    plugins: [denoPlugin(), ...options.plugins ?? []],
+    plugins: [denoPlugin(), ...(options.plugins ?? [])],
     external: options.external,
     platform: options.platform,
   });
@@ -53,10 +51,12 @@ Deno.test({
   name: "entrypoints - object array",
   fn: async () => {
     await testEsbuild({
-      entryPoints: [{
-        in: getFixture("simple.ts"),
-        out: "foo",
-      }],
+      entryPoints: [
+        {
+          in: getFixture("simple.ts"),
+          out: "foo",
+        },
+      ],
     });
   },
   sanitizeResources: false,
@@ -160,23 +160,25 @@ Deno.test({
   fn: async () => {
     const res = await testEsbuild({
       entryPoints: [getFixture("mapped.ts")],
-      plugins: [{
-        name: "test",
-        setup(ctx) {
-          ctx.onResolve({ filter: /mapped$/ }, () => {
-            return {
-              path: getFixture("simple.ts"),
-              namespace: "test-internal",
-            };
-          });
+      plugins: [
+        {
+          name: "test",
+          setup(ctx) {
+            ctx.onResolve({ filter: /mapped$/ }, () => {
+              return {
+                path: getFixture("simple.ts"),
+                namespace: "test-internal",
+              };
+            });
 
-          ctx.onLoad({ filter: /.*/, namespace: "test-internal" }, () => {
-            return {
-              contents: "hey",
-            };
-          });
+            ctx.onLoad({ filter: /.*/, namespace: "test-internal" }, () => {
+              return {
+                contents: "hey",
+              };
+            });
+          },
         },
-      }],
+      ],
     });
 
     expect(res.outputFiles[0].text).toContain("hey");
@@ -259,16 +261,18 @@ Deno.test({
   fn: async () => {
     const res = await testEsbuild({
       entryPoints: [":::"],
-      plugins: [{
-        name: ":::",
-        setup(build) {
-          build.onResolve({ filter: /:::/ }, () => {
-            return {
-              path: getFixture("simple.ts"),
-            };
-          });
+      plugins: [
+        {
+          name: ":::",
+          setup(build) {
+            build.onResolve({ filter: /:::/ }, () => {
+              return {
+                path: getFixture("simple.ts"),
+              };
+            });
+          },
         },
-      }],
+      ],
     });
 
     expect(res.outputFiles[0].text).toContain("hey");
@@ -286,6 +290,18 @@ Deno.test({
     });
 
     expect(res.outputFiles[0].text).not.toContain("worker_threads");
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "bundle json require in npm module",
+  fn: async () => {
+    // This threw previously.
+    await testEsbuild({
+      entryPoints: [getFixture("mime-db.ts")],
+    });
   },
   sanitizeResources: false,
   sanitizeOps: false,
