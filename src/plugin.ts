@@ -26,6 +26,12 @@ export interface DenoPluginOptions {
   noTranspile?: boolean;
   /** Keep JSX as is, instead of transpiling it according to compilerOptions. */
   preserveJsx?: boolean;
+  /**
+   * Prefix for public environment variables that should be inlined during
+   * bundling.
+   * @example `FRESH_PUBLIC_`
+   */
+  publicEnvVarPrefix?: string;
 }
 
 /**
@@ -132,9 +138,39 @@ export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
           return null;
         }
 
+        const esbuildLoader = mediaToLoader(res.mediaType);
+
+        const envPrefix = options.publicEnvVarPrefix;
+        if (
+          envPrefix &&
+          moduleType === RequestedModuleType.Default
+        ) {
+          let code = new TextDecoder().decode(res.code);
+
+          code = code.replaceAll(
+            /Deno\.env\.get\(["']([^)]+)['"]\)|process\.env\.([\w_-]+)/g,
+            (m, name, processName) => {
+              if (name !== undefined && name.startsWith(envPrefix)) {
+                return JSON.stringify(Deno.env.get(name));
+              }
+              if (
+                processName !== undefined && processName.startsWith(envPrefix)
+              ) {
+                return JSON.stringify(Deno.env.get(processName));
+              }
+              return m;
+            },
+          );
+
+          return {
+            contents: code,
+            loader: esbuildLoader,
+          };
+        }
+
         return {
           contents: res.code,
-          loader: mediaToLoader(res.mediaType),
+          loader: esbuildLoader,
         };
       };
       ctx.onLoad({ filter: /.*/, namespace: "file" }, onLoad);

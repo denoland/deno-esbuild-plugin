@@ -306,3 +306,36 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false,
 });
+
+Deno.test({
+  name: "support public env vars",
+  fn: async () => {
+    Deno.env.set("TEST_PUBLIC_FOO", "foo-public-var");
+    const res = await build({
+      entryPoints: [getFixture("env-vars.ts")],
+      write: false,
+      format: "esm",
+      bundle: true,
+      plugins: [denoPlugin({ publicEnvVarPrefix: "TEST_PUBLIC_" })],
+    });
+
+    const code = res.outputFiles[0].text;
+
+    const binString = String.fromCodePoint(...res.outputFiles[0].contents);
+    const data = btoa(binString);
+
+    expect(code).not.toContain("Deno.env");
+    expect(code).not.toContain("process.env");
+
+    const dataURL = `data:text/javascript;base64,${data}`;
+
+    // then import that as new JS module, which will fail.
+    const mod = await import(dataURL);
+
+    expect(mod.deno).toEqual("foo-public-var");
+    expect(mod.deno2).toEqual("foo-public-var");
+    expect(mod.node).toEqual("foo-public-var");
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
