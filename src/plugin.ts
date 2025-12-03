@@ -102,7 +102,7 @@ export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
           };
         } catch (err) {
           const couldNotResolveReg =
-            /Relative import path ".*?" not prefixed with/;
+            /not a dependency and not in import map|Relative import path ".*?" not prefixed with/;
 
           if (err instanceof Error && couldNotResolveReg.test(err.message)) {
             return null;
