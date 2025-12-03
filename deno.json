@@ -19,7 +19,10 @@
     "mapped": "./tests/fixtures/simple.ts"
   },
   "lint": {
-    "rules": { "include": ["no-console"] }
+    "rules": {
+      "include": ["no-console"],
+      "exclude": ["no-import-prefix", "no-unversioned-import"]
+    }
   },
   "publish": {
     "exclude": [".github/", "tests/"]
