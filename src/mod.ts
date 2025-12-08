@@ -1,1 +1,1 @@
-export { denoPlugin, type DenoPluginOptions } from "./plugin.ts";
+export { denoPlugin, type DenoPluginOptions, denoPlugins } from "./plugin.ts";

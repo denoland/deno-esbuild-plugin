@@ -1,4 +1,5 @@
 import {
+  type Loader as WorkspaceLoader,
   MediaType,
   RequestedModuleType,
   ResolutionMode,
@@ -13,6 +14,7 @@ import type {
   OnResolveResult,
   Platform,
   Plugin,
+  PluginBuild,
 } from "esbuild";
 import * as path from "@std/path";
 import { isBuiltin } from "node:module";
@@ -34,6 +36,159 @@ export interface DenoPluginOptions {
   publicEnvVarPrefix?: string;
 }
 
+async function setupPlugin(
+  ctx: PluginBuild,
+  options: DenoPluginOptions,
+): Promise<WorkspaceLoader> {
+  const workspace = new Workspace({
+    debug: options.debug,
+    configPath: options.configPath,
+    nodeConditions: ctx.initialOptions.conditions,
+    noTranspile: options.noTranspile,
+    preserveJsx: options.preserveJsx,
+    platform: getPlatform(ctx.initialOptions.platform),
+  });
+
+  const loader = await workspace.createLoader();
+
+  ctx.onDispose(() => {
+    loader[Symbol.dispose]?.();
+  });
+
+  return loader;
+}
+
+function setupResolverPlugin(ctx: PluginBuild, loader: WorkspaceLoader): void {
+  const externals = (ctx.initialOptions.external ?? []).map((item) =>
+    externalToRegex(item)
+  );
+
+  const onResolve = async (
+    args: OnResolveArgs,
+  ): Promise<OnResolveResult | null> => {
+    if (
+      isBuiltin(args.path) || externals.some((reg) => reg.test(args.path))
+    ) {
+      return {
+        path: args.path,
+        external: true,
+      };
+    }
+    const kind = args.kind === "require-call" || args.kind === "require-resolve"
+      ? ResolutionMode.Require
+      : ResolutionMode.Import;
+
+    try {
+      const res = await loader.resolve(args.path, args.importer, kind);
+
+      let namespace: string | undefined;
+      if (res.startsWith("file:")) {
+        namespace = "file";
+      } else if (res.startsWith("http:")) {
+        namespace = "http";
+      } else if (res.startsWith("https:")) {
+        namespace = "https";
+      } else if (res.startsWith("npm:")) {
+        namespace = "npm";
+      } else if (res.startsWith("jsr:")) {
+        namespace = "jsr";
+      }
+
+      const resolved = res.startsWith("file:") ? path.fromFileUrl(res) : res;
+
+      return {
+        path: resolved,
+        namespace,
+      };
+    } catch (err) {
+      const couldNotResolveReg =
+        /not a dependency and not in import map|Relative import path ".*?" not prefixed with/;
+
+      if (err instanceof Error && couldNotResolveReg.test(err.message)) {
+        return null;
+      }
+
+      throw err;
+    }
+  };
+
+  // Esbuild doesn't detect namespaces in entrypoints. We need
+  // a catchall resolver for that.
+  ctx.onResolve({ filter: /.*/ }, onResolve);
+  ctx.onResolve({ filter: /.*/, namespace: "file" }, onResolve);
+  ctx.onResolve({ filter: /.*/, namespace: "http" }, onResolve);
+  ctx.onResolve({ filter: /.*/, namespace: "https" }, onResolve);
+  ctx.onResolve({ filter: /.*/, namespace: "data" }, onResolve);
+  ctx.onResolve({ filter: /.*/, namespace: "npm" }, onResolve);
+  ctx.onResolve({ filter: /.*/, namespace: "jsr" }, onResolve);
+}
+
+interface LoaderPluginOptions {
+  publicEnvVarPrefix?: string;
+}
+
+function setupLoaderPlugin(
+  ctx: PluginBuild,
+  loader: WorkspaceLoader,
+  options: LoaderPluginOptions,
+): void {
+  const onLoad = async (args: OnLoadArgs): Promise<OnLoadResult | null> => {
+    const url =
+      args.path.startsWith("http:") || args.path.startsWith("https:") ||
+        args.path.startsWith("npm:") || args.path.startsWith("jsr:")
+        ? args.path
+        : path.toFileUrl(args.path).toString();
+
+    const moduleType = getModuleType(args.path, args.with);
+    const res = await loader.load(url, moduleType);
+
+    if (res.kind === "external") {
+      return null;
+    }
+
+    const esbuildLoader = mediaToLoader(res.mediaType);
+
+    const envPrefix = options.publicEnvVarPrefix;
+    if (
+      envPrefix &&
+      moduleType === RequestedModuleType.Default
+    ) {
+      let code = new TextDecoder().decode(res.code);
+
+      code = code.replaceAll(
+        /Deno\.env\.get\(["']([^)]+)['"]\)|process\.env\.([\w_-]+)/g,
+        (m, name, processName) => {
+          if (name !== undefined && name.startsWith(envPrefix)) {
+            return JSON.stringify(Deno.env.get(name));
+          }
+          if (
+            processName !== undefined && processName.startsWith(envPrefix)
+          ) {
+            return JSON.stringify(Deno.env.get(processName));
+          }
+          return m;
+        },
+      );
+
+      return {
+        contents: code,
+        loader: esbuildLoader,
+      };
+    }
+
+    return {
+      contents: res.code,
+      loader: esbuildLoader,
+    };
+  };
+  ctx.onLoad({ filter: /.*/, namespace: "file" }, onLoad);
+  ctx.onLoad({ filter: /.*/, namespace: "jsr" }, onLoad);
+  ctx.onLoad({ filter: /.*/, namespace: "npm" }, onLoad);
+  ctx.onLoad({ filter: /.*/, namespace: "http" }, onLoad);
+  ctx.onLoad({ filter: /.*/, namespace: "https" }, onLoad);
+  ctx.onLoad({ filter: /.*/, namespace: "data" }, onLoad);
+}
+
 /**
  * Create an instance of the Deno plugin for esbuild
  */
@@ -41,146 +196,46 @@ export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
   return {
     name: "deno",
     async setup(ctx) {
-      const workspace = new Workspace({
-        debug: options.debug,
-        configPath: options.configPath,
-        nodeConditions: ctx.initialOptions.conditions,
-        noTranspile: options.noTranspile,
-        preserveJsx: options.preserveJsx,
-        platform: getPlatform(ctx.initialOptions.platform),
-      });
+      const loader = await setupPlugin(ctx, options);
 
-      const loader = await workspace.createLoader();
+      setupResolverPlugin(ctx, loader);
 
-      ctx.onDispose(() => {
-        loader[Symbol.dispose]?.();
-      });
-
-      const externals = (ctx.initialOptions.external ?? []).map((item) =>
-        externalToRegex(item)
-      );
-
-      const onResolve = async (
-        args: OnResolveArgs,
-      ): Promise<OnResolveResult | null> => {
-        if (
-          isBuiltin(args.path) || externals.some((reg) => reg.test(args.path))
-        ) {
-          return {
-            path: args.path,
-            external: true,
-          };
-        }
-        const kind =
-          args.kind === "require-call" || args.kind === "require-resolve"
-            ? ResolutionMode.Require
-            : ResolutionMode.Import;
-
-        try {
-          const res = await loader.resolve(args.path, args.importer, kind);
-
-          let namespace: string | undefined;
-          if (res.startsWith("file:")) {
-            namespace = "file";
-          } else if (res.startsWith("http:")) {
-            namespace = "http";
-          } else if (res.startsWith("https:")) {
-            namespace = "https";
-          } else if (res.startsWith("npm:")) {
-            namespace = "npm";
-          } else if (res.startsWith("jsr:")) {
-            namespace = "jsr";
-          }
-
-          const resolved = res.startsWith("file:")
-            ? path.fromFileUrl(res)
-            : res;
-
-          return {
-            path: resolved,
-            namespace,
-          };
-        } catch (err) {
-          const couldNotResolveReg =
-            /not a dependency and not in import map|Relative import path ".*?" not prefixed with/;
-
-          if (err instanceof Error && couldNotResolveReg.test(err.message)) {
-            return null;
-          }
-
-          throw err;
-        }
-      };
-
-      // Esbuild doesn't detect namespaces in entrypoints. We need
-      // a catchall resolver for that.
-      ctx.onResolve({ filter: /.*/ }, onResolve);
-      ctx.onResolve({ filter: /.*/, namespace: "file" }, onResolve);
-      ctx.onResolve({ filter: /.*/, namespace: "http" }, onResolve);
-      ctx.onResolve({ filter: /.*/, namespace: "https" }, onResolve);
-      ctx.onResolve({ filter: /.*/, namespace: "data" }, onResolve);
-      ctx.onResolve({ filter: /.*/, namespace: "npm" }, onResolve);
-      ctx.onResolve({ filter: /.*/, namespace: "jsr" }, onResolve);
-
-      const onLoad = async (
-        args: OnLoadArgs,
-      ): Promise<OnLoadResult | null> => {
-        const url =
-          args.path.startsWith("http:") || args.path.startsWith("https:") ||
-            args.path.startsWith("npm:") || args.path.startsWith("jsr:")
-            ? args.path
-            : path.toFileUrl(args.path).toString();
-
-        const moduleType = getModuleType(args.path, args.with);
-        const res = await loader.load(url, moduleType);
-
-        if (res.kind === "external") {
-          return null;
-        }
-
-        const esbuildLoader = mediaToLoader(res.mediaType);
-
-        const envPrefix = options.publicEnvVarPrefix;
-        if (
-          envPrefix &&
-          moduleType === RequestedModuleType.Default
-        ) {
-          let code = new TextDecoder().decode(res.code);
-
-          code = code.replaceAll(
-            /Deno\.env\.get\(["']([^)]+)['"]\)|process\.env\.([\w_-]+)/g,
-            (m, name, processName) => {
-              if (name !== undefined && name.startsWith(envPrefix)) {
-                return JSON.stringify(Deno.env.get(name));
-              }
-              if (
-                processName !== undefined && processName.startsWith(envPrefix)
-              ) {
-                return JSON.stringify(Deno.env.get(processName));
-              }
-              return m;
-            },
-          );
-
-          return {
-            contents: code,
-            loader: esbuildLoader,
-          };
-        }
-
-        return {
-          contents: res.code,
-          loader: esbuildLoader,
-        };
-      };
-      ctx.onLoad({ filter: /.*/, namespace: "file" }, onLoad);
-      ctx.onLoad({ filter: /.*/, namespace: "jsr" }, onLoad);
-      ctx.onLoad({ filter: /.*/, namespace: "npm" }, onLoad);
-      ctx.onLoad({ filter: /.*/, namespace: "http" }, onLoad);
-      ctx.onLoad({ filter: /.*/, namespace: "https" }, onLoad);
-      ctx.onLoad({ filter: /.*/, namespace: "data" }, onLoad);
+      const { publicEnvVarPrefix } = options;
+      setupLoaderPlugin(ctx, loader, { publicEnvVarPrefix });
     },
   };
+}
+
+/**
+ * Create instances of the Deno resolver and loader plugins for esbuild
+ */
+export function denoPlugins(options: DenoPluginOptions = {}): Plugin[] {
+  let loaderPromise: Promise<WorkspaceLoader> | undefined;
+  async function setup(ctx: PluginBuild): Promise<WorkspaceLoader> {
+    if (!loaderPromise) {
+      loaderPromise = setupPlugin(ctx, options);
+    }
+    return await loaderPromise;
+  }
+
+  const resolverPlugin: Plugin = {
+    name: "deno",
+    async setup(ctx) {
+      const loader = await setup(ctx);
+
+      setupResolverPlugin(ctx, loader);
+    },
+  };
+  const loaderPlugin: Plugin = {
+    name: "deno",
+    async setup(ctx) {
+      const loader = await setup(ctx);
+
+      const { publicEnvVarPrefix } = options;
+      setupLoaderPlugin(ctx, loader, { publicEnvVarPrefix });
+    },
+  };
+  return [resolverPlugin, loaderPlugin];
 }
 
 function mediaToLoader(type: MediaType): Loader {

@@ -9,6 +9,7 @@
     "jsxImportSource": "preact"
   },
   "imports": {
+    "@fixtures/": "./tests/fixtures/",
     "@deno/loader": "jsr:@deno/loader@^0.3.10",
     "@std/expect": "jsr:@std/expect@^1.0.16",
     "@std/path": "jsr:@std/path@^1.1.1",
@@ -27,5 +28,9 @@
   "publish": {
     "exclude": [".github/", "tests/"]
   },
-  "exclude": ["./tests/fixtures/virtual.ts"]
+  "exclude": [
+    "./tests/fixtures/virtual.ts",
+    "./tests/fixtures/compiled.ts",
+    "./tests/fixtures/mapped2.ts"
+  ]
 }

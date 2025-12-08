@@ -1,7 +1,13 @@
 import { expect } from "@std/expect";
-import { build, type BuildOptions } from "esbuild";
+import {
+  build,
+  type BuildOptions,
+  type OnLoadArgs,
+  type Plugin,
+} from "esbuild";
 import { denoPlugin } from "@deno/esbuild-plugin";
 import * as path from "@std/path";
+import { denoPlugins } from "../src/plugin.ts";
 
 async function testEsbuild(options: {
   jsx?: BuildOptions["jsx"];
@@ -88,6 +94,19 @@ Deno.test({
 });
 
 Deno.test({
+  name: "resolves/loads - mapped entrypoint",
+  fn: async () => {
+    const res = await testEsbuild({
+      entryPoints: ["@fixtures/simple.ts"],
+    });
+
+    expect(res.outputFiles[0].text).toContain('console.log("hey")');
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
   name: "resolves/loads - https:",
   fn: async () => {
     await testEsbuild({
@@ -156,32 +175,189 @@ Deno.test({
 });
 
 Deno.test({
-  name: "plugins can participate in resolution",
+  name: "plugins can participate in resolution and loading",
+  fn: async () => {
+    const [resolverPlugin, loaderPlugin] = denoPlugins();
+    const res = await build({
+      entryPoints: ["@fixtures/compiled"],
+      write: false,
+      format: "esm",
+      bundle: true,
+      plugins: [
+        resolverPlugin,
+        {
+          name: "multiply",
+          setup(ctx) {
+            ctx.onResolve(
+              { filter: /simple/ },
+              () => {
+                return {
+                  path: getFixture("simple.ts"),
+                  namespace: "file",
+                };
+              },
+            );
+
+            ctx.onLoad(
+              { filter: /compiled.ts$/, namespace: "file" },
+              async (args: OnLoadArgs) => {
+                const url = path.toFileUrl(args.path);
+                const file = await Deno.readTextFile(url);
+                const contents = file.replaceAll(
+                  ": number =",
+                  ": number = 2 *",
+                );
+                return {
+                  contents,
+                  loader: "ts",
+                };
+              },
+            );
+          },
+        },
+        loaderPlugin,
+      ],
+    });
+
+    expect(res.errors).toEqual([]);
+    expect(res.warnings).toEqual([]);
+    expect(res.outputFiles.length).toEqual(1);
+
+    const output = res.outputFiles[0].text;
+    expect(output).toContain('console.log("hey")');
+    const dataURL = `data:application/javascript;base64,${btoa(output)}`;
+    const { x, y } = await import(dataURL);
+    expect(x).toBe(4);
+    expect(y).toBe(6);
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name:
+    "plugins can participate in resolution and loading after denoPlugin if using unique namespace",
   fn: async () => {
     const res = await testEsbuild({
-      entryPoints: [getFixture("mapped.ts")],
+      entryPoints: ["@fixtures/mapped2"],
       plugins: [
         {
-          name: "test",
+          name: "multiply",
           setup(ctx) {
-            ctx.onResolve({ filter: /mapped$/ }, () => {
-              return {
-                path: getFixture("simple.ts"),
-                namespace: "test-internal",
-              };
-            });
+            ctx.onResolve(
+              { filter: /mapped2$/ },
+              () => {
+                return {
+                  path: getFixture("simple.ts"),
+                  namespace: "test-internal",
+                };
+              },
+            );
 
-            ctx.onLoad({ filter: /.*/, namespace: "test-internal" }, () => {
-              return {
-                contents: "hey",
-              };
-            });
+            ctx.onLoad(
+              { filter: /.*/, namespace: "test-internal" },
+              async (args: OnLoadArgs) => {
+                const url = path.toFileUrl(args.path);
+                const file = await Deno.readTextFile(url);
+                return {
+                  contents: file + "\nexport const z: number = 3;\n",
+                  loader: "ts",
+                };
+              },
+            );
           },
         },
       ],
     });
 
-    expect(res.outputFiles[0].text).toContain("hey");
+    expect(res.errors).toEqual([]);
+    expect(res.warnings).toEqual([]);
+    expect(res.outputFiles.length).toEqual(1);
+
+    const output = res.outputFiles[0].text;
+    expect(output).toContain('console.log("hey")');
+    const dataURL = `data:application/javascript;base64,${btoa(output)}`;
+    const { z } = await import(dataURL);
+    expect(z).toBe(3);
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+const cssPlugin: Plugin = {
+  name: "css",
+  setup(ctx) {
+    ctx.onLoad(
+      { filter: /.*\.css$/, namespace: "file" },
+      async (args: OnLoadArgs) => {
+        const url = path.toFileUrl(args.path);
+        const file = await Deno.readTextFile(url);
+        return {
+          contents: `export default ${JSON.stringify(file)}`,
+          loader: "js",
+        };
+      },
+    );
+  },
+};
+
+Deno.test({
+  name: "plugins can load entrypoints",
+  fn: async () => {
+    const [resolverPlugin, loaderPlugin] = denoPlugins();
+    const res = await build({
+      entryPoints: ["@fixtures/styles.css"],
+      write: false,
+      format: "esm",
+      bundle: true,
+      plugins: [
+        resolverPlugin,
+        cssPlugin,
+        loaderPlugin,
+      ],
+    });
+
+    expect(res.errors).toEqual([]);
+    expect(res.warnings).toEqual([]);
+    expect(res.outputFiles.length).toEqual(1);
+
+    const output = res.outputFiles[0].text;
+    expect(output).toContain("var styles_default = `.test {");
+    const dataURL = `data:application/javascript;base64,${btoa(output)}`;
+    const { default: styles } = await import(dataURL);
+    const fixturePath = getFixture("styles.css");
+    expect(styles).toBe(await Deno.readTextFile(fixturePath));
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "plugins can load non-entrypoints",
+  fn: async () => {
+    const [resolverPlugin, loaderPlugin] = denoPlugins();
+    const res = await build({
+      entryPoints: ["@fixtures/styles.ts"],
+      write: false,
+      format: "esm",
+      bundle: true,
+      plugins: [
+        resolverPlugin,
+        cssPlugin,
+        loaderPlugin,
+      ],
+    });
+
+    expect(res.errors).toEqual([]);
+    expect(res.warnings).toEqual([]);
+    expect(res.outputFiles.length).toEqual(1);
+
+    const output = res.outputFiles[0].text;
+    expect(output).toContain("var styles_default = `.test {");
+    const dataURL = `data:application/javascript;base64,${btoa(output)}`;
+    const { styles, name } = await import(dataURL);
+    expect(styles).toBe(await Deno.readTextFile(getFixture("styles.css")));
+    expect(name).toBe("main");
   },
   sanitizeResources: false,
   sanitizeOps: false,

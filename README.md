@@ -34,6 +34,26 @@ await esbuild.build({
 });
 ```
 
+If you have another plugin that needs to be setup between Deno's resolver and
+loaer, you can split the plugin using denoPlugins instead of denoPlugin.
+
+```ts
+import * as esbuild from "esbuild";
+import { denoPlugins } from "@deno/esbuild-plugin";
+
+const [denoResolverPlugin, denoLoaderPlugin] = denoPlugins();
+await esbuild.build({
+  entryPoints: ["app.js"],
+  bundle: true,
+  outfile: "out.js",
+  plugins: [
+    denoResolverPlugin,
+    // other plugins
+    denoLoaderPlugin,
+  ],
+});
+```
+
 ## License
 
 MIT, see the [LICENSE file](./LICENSE).
